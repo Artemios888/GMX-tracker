@@ -41,3 +41,8 @@ with open(CSV_FILE, mode='a', newline='') as file:
         writer.writerow(row)
 
 print("Данные успешно обновлены.")
+import csv
+
+with open("fees_data.csv", "a", newline="") as file:
+    writer = csv.writer(file)
+    writer.writerow([timestamp, chain, fees])
