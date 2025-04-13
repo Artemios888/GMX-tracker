@@ -1,65 +1,49 @@
-import requests
-import csv
 import os
+import json
 from datetime import datetime
+from fetch_gmx_fees import fetch_fees
 
-# URLs для сетей
-URLS = {
-    "Arbitrum": "https://stats.gmx.io/api/arbitrum/fees",
-    "Avalanche": "https://stats.gmx.io/api/avalanche/fees"
-}
+DATA_FILE = "fees_log.json"
 
-# Файл для сохранения данных
-CSV_FILE = "gmx_fees_log.csv"
-
-def fetch_fees(network, url):
-    try:
-        response = requests.get(url, timeout=10)
-        response.raise_for_status()
-        data = response.json()
-        total_fees = data.get("totalFees", 0)
-        return total_fees
-    except Exception as e:
-        print(f"[{network}] Ошибка при получении данных: {e}")
-        return None
-
-def read_last_row():
-    if not os.path.exists(CSV_FILE):
+def load_last_data():
+    if not os.path.exists(DATA_FILE):
         return {}
-    
-    with open(CSV_FILE, "r", newline='', encoding='utf-8') as file:
-        reader = list(csv.DictReader(file))
-        if not reader:
-            return {}
-        return reader[-1]
+    with open(DATA_FILE, "r") as f:
+        return json.load(f)
 
-def write_new_row(timestamp, arbitrum_fees, avalanche_fees):
-    file_exists = os.path.isfile(CSV_FILE)
-    with open(CSV_FILE, "a", newline='', encoding='utf-8') as file:
-        writer = csv.writer(file)
-        if not file_exists:
-            writer.writerow(["timestamp", "arbitrum_fees", "avalanche_fees"])
-        writer.writerow([timestamp, arbitrum_fees, avalanche_fees])
+def save_current_data(data):
+    with open(DATA_FILE, "w") as f:
+        json.dump(data, f, indent=2)
+
+def notify_if_significant_change(last, current):
+    threshold_pct = 20  # % изменения для оповещения
+    for network in current:
+        if network in last:
+            prev_fees = last[network]["fees"]
+            curr_fees = current[network]["fees"]
+            if prev_fees == 0:
+                continue
+            change_pct = abs((curr_fees - prev_fees) / prev_fees) * 100
+            if change_pct >= threshold_pct:
+                print(f"⚠️ Внимание! В {network} изменение комиссий: {change_pct:.2f}%")
+        else:
+            print(f"ℹ️ Новые данные по сети {network} записаны.")
 
 def main():
-    now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
-    
-    arb_fees = fetch_fees("Arbitrum", URLS["Arbitrum"])
-    ava_fees = fetch_fees("Avalanche", URLS["Avalanche"])
+    print("📥 Получение текущих данных...")
+    current_data = fetch_fees()
+    current_data["timestamp"] = datetime.utcnow().isoformat()
 
-    if arb_fees is None or ava_fees is None:
-        print("Ошибка получения данных. Завершение.")
-        return
+    print("📂 Загрузка предыдущих данных...")
+    last_data = load_last_data()
 
-    last_row = read_last_row()
-    last_arb = float(last_row.get("arbitrum_fees", 0))
-    last_ava = float(last_row.get("avalanche_fees", 0))
+    print("📊 Сравнение...")
+    notify_if_significant_change(last_data, current_data)
 
-    # Вывод разницы для отладки
-    print(f"[Arbitrum] Старое: {last_arb}, Новое: {arb_fees}, Разница: {arb_fees - last_arb}")
-    print(f"[Avalanche] Старое: {last_ava}, Новое: {ava_fees}, Разница: {ava_fees - last_ava}")
+    print("💾 Сохраняем новые данные...")
+    save_current_data(current_data)
 
-    write_new_row(now, arb_fees, ava_fees)
+    print("✅ Завершено!")
 
 if __name__ == "__main__":
     main()
