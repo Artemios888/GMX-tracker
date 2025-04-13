@@ -1,14 +1,16 @@
-name: Fetch GMX Fees
+name: GMX Fees Tracker
 
 on:
   schedule:
-    - cron: '0 0,12,18 * * *'  # 00:00, 12:00, 18:00 UTC
+    - cron: '0 0,12,18 * * *'  # Запуск в 00:00, 12:00 и 18:00 UTC
   workflow_dispatch:
 
-jobs:
-  fetch-fees:
-    runs-on: ubuntu-latest
+permissions:
+  contents: write
 
+jobs:
+  track-fees:
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -16,18 +18,16 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: 3.11
+          python-version: 3.10
 
       - name: Install dependencies
         run: pip install requests
 
-      - name: Run tracker script
+      - name: Run GMX tracker
         run: python gmx_tracker.py
 
-      - name: Commit updated data
-        run: |
-          git config --global user.name "github-actions"
-          git config --global user.email "github-actions@github.com"
-          git add data/*
-          git commit -m "Update fees data" || echo "No changes to commit"
-          git push
+      - name: Commit changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: Обновление данных Fees
+          file_pattern: gmx_fees_log.csv
