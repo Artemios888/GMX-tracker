@@ -1,16 +1,14 @@
-name: GMX Fees Tracker
+name: GMX Tracker
 
 on:
   schedule:
-    - cron: '0 0,12,18 * * *'  # Запуск в 00:00, 12:00 и 18:00 UTC
+    - cron: '0 0,12,18 * * *'
   workflow_dispatch:
 
-permissions:
-  contents: write
-
 jobs:
-  track-fees:
+  run-tracker:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -18,16 +16,10 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: 3.10
+          python-version: '3.10'
 
       - name: Install dependencies
         run: pip install requests
 
-      - name: Run GMX tracker
+      - name: Run tracker
         run: python gmx_tracker.py
-
-      - name: Commit changes
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: Обновление данных Fees
-          file_pattern: gmx_fees_log.csv
