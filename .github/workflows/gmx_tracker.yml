@@ -27,9 +27,6 @@ jobs:
         run: python gmx_tracker.py
 
       - name: Commit changes
-        run: |
-          git config --global user.name 'github-actions'
-          git config --global user.email 'github-actions@github.com'
-          git add fees_log.csv
-          git commit -m "Update fees_log.csv" || echo "No changes to commit"
-          git push
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: Обновление данных Fees
